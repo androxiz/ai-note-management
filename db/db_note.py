@@ -3,6 +3,7 @@ from schemas import NoteBase
 from db.models import DbNote, DbNoteHistory, DbUser
 from fastapi import HTTPException
 
+from services.gemini import summaraze_note
 
 def create_note(db:Session, request:NoteBase, current_user:DbUser):
     new_note = DbNote(
@@ -36,6 +37,23 @@ def get_note_history(db:Session, id:int, current_user:DbUser):
     if not note.history:
         raise HTTPException(status_code=404, detail=f'History is empty')
     return note.history
+
+def get_note_summary(db:Session, id:int, current_user:DbUser):
+    note = db.query(DbNote).filter(DbNote.id==id).first()
+    if not note:
+        raise HTTPException(status_code=404, detail=f'Note {id} not found')
+    if note.owner != current_user:
+        raise HTTPException(status_code=403, detail=f'Forbidden')
+
+    response = summaraze_note(note.description)
+    return {
+        'note_id': note.id,
+        'title': note.title,
+        'summary': response
+    }
+
+
+
 
 def update_note(db:Session, id:int, request:NoteBase, current_user:DbUser):
     note = db.query(DbNote).filter(DbNote.id==id)

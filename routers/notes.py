@@ -24,6 +24,10 @@ def get_all(db:Session=Depends(get_db), token:str=Depends(oauth2_scheme)):
 def get_one(id:int, db:Session=Depends(get_db), current_user:DbUser=Depends(get_current_user)):
     return db_note.get_one(db=db, id=id, current_user=current_user)
 
+@router.get('/{id}/summarize')
+def get_note_summary(id:int, db:Session=Depends(get_db), current_user:DbUser=Depends(get_current_user)):
+    return db_note.get_note_summary(db=db, id=id, current_user=current_user)
+
 @router.get('{id}/history', response_model=List[NoteHistoryList])
 def get_note_history(id:int, db:Session=Depends(get_db), current_user:DbUser=Depends(get_current_user)):
     return db_note.get_note_history(db=db, id=id, current_user=current_user)
