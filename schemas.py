@@ -10,20 +10,16 @@ class UserBase(BaseModel):
 class UserList(BaseModel):
     username: str
     email: str
-    class Config:
-        from_attributes = True
+
 
 class NoteBase(BaseModel):
     title: str = Field(..., description='Note title')
     description: str = Field(..., description='Note Description')
-    owner_id: int
 
 class NoteList(BaseModel):
     title: str
     description: str
-    owner: UserList
-    class Config:
-        from_attributes = True
+    owner_id: int
 
 
 class NoteHistoryList(BaseModel):

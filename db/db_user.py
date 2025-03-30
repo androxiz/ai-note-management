@@ -24,18 +24,35 @@ def get_all(db:Session):
     return db.query(DbUser).all()
 
 
-def get_one(db:Session, id:int):
+def get_one(db:Session, id:int, current_user:DbUser):
     user = db.query(DbUser).filter(DbUser.id==id).first()
+
     if not user:
         raise HTTPException(status_code=404, detail=f'User {id} not found')
+    if user != current_user:
+        raise HTTPException(status_code=403, detail=f'Forbidden')
+    
     return user
 
-def update_user(db:Session, id:int, request: UserBase):
+
+def get_user_notes(db:Session, id:int, current_user:DbUser):
+    user = db.query(DbUser).filter(DbUser.id==id).first()
+    if user != current_user:
+        raise HTTPException(status_code=403, detail=f'Forbidden')
+    if not user.notes:
+        raise HTTPException(status_code=404, detail='User doesnt have any notes')
+    return user.notes
+    
+
+
+def update_user(db:Session, id:int, request: UserBase, current_user:DbUser):
     user = db.query(DbUser).filter(DbUser.id==id)
     
     if not user.first():
          raise HTTPException(status_code=404, detail=f'User {id} not found')
-
+    if user.first() != current_user:
+        raise HTTPException(status_code=403, detail=f'Forbidden')
+    
     try:
         user.update({
             DbUser.username: request.username,
@@ -50,12 +67,22 @@ def update_user(db:Session, id:int, request: UserBase):
     
     return user.first()
 
-def delete_user(db:Session, id:int):
+def delete_user(db:Session, id:int, current_user:DbUser):
     user = db.query(DbUser).filter(DbUser.id==id).first()
     if not user:
         raise HTTPException(status_code=404, detail=f'User {id} not found')
+    if user != current_user:
+        raise HTTPException(status_code=403, detail=f'Forbidden')
+    
     db.delete(user)
     db.commit()
     return {
         'message': f'User {id} has been deleted successfully'
     }
+
+
+def get_user_by_name(db:Session, username:str):
+    user = db.query(DbUser).filter(DbUser.username==username).first()
+    if not user:
+         raise HTTPException(status_code=404, detail=f'User {username} not found')
+    return user
