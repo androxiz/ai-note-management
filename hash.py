@@ -6,5 +6,5 @@ class Hash:
     def hash(password:str):
         return pwd_cnxt.hash(password)
     
-    def verify(plain_password:str, hashed_password:str):
+    def verify(hashed_password:str, plain_password:str):
         return pwd_cnxt.verify(plain_password, hashed_password)
