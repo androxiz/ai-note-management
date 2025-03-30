@@ -1,9 +1,10 @@
 from pydantic import BaseModel, Field
 from datetime import datetime
+from pydantic import EmailStr
 
 class UserBase(BaseModel):
     username: str = Field(..., description='The name of user')
-    email: str = Field(..., description='User email')
+    email: EmailStr = Field(..., description='User email')
     password: str = Field(..., description='Password')
 
 class UserList(BaseModel):
