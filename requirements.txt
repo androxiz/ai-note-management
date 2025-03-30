@@ -8,3 +8,4 @@ python-jose
 python-dotenv
 python-multipart
 google-generativeai
+numpy
