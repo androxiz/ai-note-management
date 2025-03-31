@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Path
+from fastapi import APIRouter, Depends
 from db import db_user
 from sqlalchemy.orm.session import Session
 from schemas import UserBase, UserList, NoteList
@@ -21,7 +21,7 @@ def get_all(db: Session = Depends(get_db),token:str=Depends(oauth2_scheme)):
     return db_user.get_all(db=db)
 
 @router.get('/{id}', response_model=UserList)
-def get_one(id:int = Path(..., description='User id to search for'), db:Session = Depends(get_db), current_user:DbUser=Depends(get_current_user)):
+def get_one(id:int, db:Session = Depends(get_db), current_user:DbUser=Depends(get_current_user)):
     return db_user.get_one(db=db, id=id, current_user=current_user)
 
 @router.get('/{id}/notes', response_model=List[NoteList])

@@ -3,6 +3,7 @@ from routers import users, notes, analytics
 from db import models
 from db.database import engine
 from auth import authentication
+
 app = FastAPI()
 
 app.include_router(users.router)

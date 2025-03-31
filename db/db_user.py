@@ -5,6 +5,17 @@ from sqlalchemy.orm.session import Session
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 
+
+def check_user(db: Session, id: int, current_user: DbUser):
+    user = db.query(DbUser).filter(DbUser.id == id)
+    if not user.first():
+        raise HTTPException(status_code=404, detail=f'User {id} not found')
+    if user.first() != current_user:
+        raise HTTPException(status_code=403, detail=f'Forbidden')
+
+    return user
+
+
 def create_user(db: Session, request: UserBase):
     new_user = DbUser(
         username = request.username,
@@ -25,34 +36,19 @@ def get_all(db:Session):
 
 
 def get_one(db:Session, id:int, current_user:DbUser):
-    user = db.query(DbUser).filter(DbUser.id==id).first()
-
-    if not user:
-        raise HTTPException(status_code=404, detail=f'User {id} not found')
-    if user != current_user:
-        raise HTTPException(status_code=403, detail=f'Forbidden')
-    
+    user = check_user(db, id, current_user).first()
     return user
 
 
 def get_user_notes(db:Session, id:int, current_user:DbUser):
-    user = db.query(DbUser).filter(DbUser.id==id).first()
-    if user != current_user:
-        raise HTTPException(status_code=403, detail=f'Forbidden')
+    user = check_user(db, id, current_user).first()
     if not user.notes:
         raise HTTPException(status_code=404, detail='User doesnt have any notes')
     return user.notes
     
 
-
 def update_user(db:Session, id:int, request: UserBase, current_user:DbUser):
-    user = db.query(DbUser).filter(DbUser.id==id)
-    
-    if not user.first():
-         raise HTTPException(status_code=404, detail=f'User {id} not found')
-    if user.first() != current_user:
-        raise HTTPException(status_code=403, detail=f'Forbidden')
-    
+    user = check_user(db, id, current_user)
     try:
         user.update({
             DbUser.username: request.username,
@@ -68,12 +64,7 @@ def update_user(db:Session, id:int, request: UserBase, current_user:DbUser):
     return user.first()
 
 def delete_user(db:Session, id:int, current_user:DbUser):
-    user = db.query(DbUser).filter(DbUser.id==id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail=f'User {id} not found')
-    if user != current_user:
-        raise HTTPException(status_code=403, detail=f'Forbidden')
-    
+    user = check_user(db, id, current_user).first()
     db.delete(user)
     db.commit()
     return {
