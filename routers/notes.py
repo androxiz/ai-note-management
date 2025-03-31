@@ -28,7 +28,7 @@ def get_one(id:int, db:Session=Depends(get_db), current_user:DbUser=Depends(get_
 def get_note_summary(id:int, db:Session=Depends(get_db), current_user:DbUser=Depends(get_current_user)):
     return db_note.get_note_summary(db=db, id=id, current_user=current_user)
 
-@router.get('{id}/history', response_model=List[NoteHistoryList])
+@router.get('/{id}/history', response_model=List[NoteHistoryList])
 def get_note_history(id:int, db:Session=Depends(get_db), current_user:DbUser=Depends(get_current_user)):
     return db_note.get_note_history(db=db, id=id, current_user=current_user)
 
@@ -36,7 +36,7 @@ def get_note_history(id:int, db:Session=Depends(get_db), current_user:DbUser=Dep
 def update_note(request:NoteBase, id:int, db:Session=Depends(get_db), current_user:DbUser=Depends(get_current_user)):
     return db_note.update_note(db=db, id=id, request=request, current_user=current_user)
 
-@router.delete('{id}/delete')
+@router.delete('/{id}/delete')
 def delete_note(id:int, db:Session=Depends(get_db), current_user:DbUser=Depends(get_current_user)):
     return db_note.delete_note(db=db, id=id, current_user=current_user)
 

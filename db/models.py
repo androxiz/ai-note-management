@@ -1,7 +1,7 @@
 from db.database import Base
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 
 class DbUser(Base):
     __tablename__ = 'user'
@@ -27,6 +27,6 @@ class DbNoteHistory(Base):
     note_id = Column(ForeignKey('note.id'))
     title = Column(String, nullable=False)
     description = Column(String, nullable=False)
-    changed_at = Column(DateTime, default=datetime.utcnow)
+    changed_at = Column(DateTime, default=datetime.now(timezone.utc))
 
     note = relationship('DbNote', back_populates='history')
