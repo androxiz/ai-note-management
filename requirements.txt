@@ -10,3 +10,5 @@ python-multipart
 google-generativeai
 numpy
 pytest
+httpx
+pytest-cov
