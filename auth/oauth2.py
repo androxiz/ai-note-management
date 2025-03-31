@@ -9,6 +9,7 @@ from db.database import get_db
 from sqlalchemy.orm.session import Session
  
 from db import db_user
+from db.models import DbUser
 
 import os
 from dotenv import load_dotenv
@@ -45,13 +46,14 @@ def get_current_user(token: str = Depends(oauth2_scheme), db:Session = Depends(g
     )
     try:
        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-       username: str = payload.get('sub')
-       if username is None:
+       user_id: str = payload.get('sub')
+       if user_id is None:
           raise credential_exception
-    except JWTError:
+    except JWTError as e:
+       print(f"JWT Error: {e}")
        raise credential_exception
     
-    user = db_user.get_user_by_name(db=db, username=username)
+    user = db.query(DbUser).filter(DbUser.id == user_id).first()
 
     if user is None:
        raise credential_exception

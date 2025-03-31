@@ -5,6 +5,17 @@ from fastapi import HTTPException
 
 from services.gemini import summaraze_note
 
+
+def check_note(db: Session, id: int, current_user: DbUser):
+    note = db.query(DbNote).filter(DbNote.id == id)
+    if not note.first():
+        raise HTTPException(status_code=404, detail=f'Note {id} not found')
+    if note.first().owner != current_user:
+        raise HTTPException(status_code=403, detail=f'Forbidden')
+
+    return note
+
+
 def create_note(db:Session, request:NoteBase, current_user:DbUser):
     new_note = DbNote(
         title = request.title,
@@ -21,29 +32,17 @@ def get_all(db:Session):
     return db.query(DbNote).all()
 
 def get_one(db:Session, id:int, current_user:DbUser):
-    note = db.query(DbNote).filter(DbNote.id==id).first()
-    if not note:
-        raise HTTPException(status_code=404, detail=f'Note {id} not found')
-    if note.owner != current_user:
-        raise HTTPException(status_code=403, detail=f'Forbidden')
-    return note
+    note = check_note(db, id, current_user)
+    return note.first()
 
 def get_note_history(db:Session, id:int, current_user:DbUser):
-    note=db.query(DbNote).filter(DbNote.id==id).first()
-    if not note:
-        raise HTTPException(status_code=404, detail=f'Note {id} not found')
-    if note.owner != current_user:
-        raise HTTPException(status_code=403, detail=f'Forbidden')
+    note = check_note(db, id, current_user).first()
     if not note.history:
         raise HTTPException(status_code=404, detail=f'History is empty')
     return note.history
 
 def get_note_summary(db:Session, id:int, current_user:DbUser):
-    note = db.query(DbNote).filter(DbNote.id==id).first()
-    if not note:
-        raise HTTPException(status_code=404, detail=f'Note {id} not found')
-    if note.owner != current_user:
-        raise HTTPException(status_code=403, detail=f'Forbidden')
+    note = check_note(db, id, current_user).first()
 
     response = summaraze_note(note.description)
     return {
@@ -53,15 +52,8 @@ def get_note_summary(db:Session, id:int, current_user:DbUser):
     }
 
 
-
-
 def update_note(db:Session, id:int, request:NoteBase, current_user:DbUser):
-    note = db.query(DbNote).filter(DbNote.id==id)
-
-    if not note.first():
-        raise HTTPException(status_code=404, detail=f'Note {id} not found')
-    if note.first().owner != current_user:
-        raise HTTPException(status_code=403, detail=f'Forbidden')
+    note = check_note(db, id, current_user)
     
     note_history = DbNoteHistory(
         note_id = note.first().id,
@@ -84,11 +76,7 @@ def update_note(db:Session, id:int, request:NoteBase, current_user:DbUser):
 
 
 def delete_note(db:Session, id:int, current_user:DbUser):
-    note = db.query(DbNote).filter(DbNote.id==id).first()
-    if not note:
-        raise HTTPException(status_code=404, detail=f'Note {id} not found')
-    if note.owner != current_user:
-        raise HTTPException(status_code=403, detail=f'Forbidden')
+    note = check_note(db, id, current_user).first()
     
     db.delete(note)
     db.commit()
