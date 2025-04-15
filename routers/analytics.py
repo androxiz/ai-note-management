@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm.session import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from db.database import get_db
 from services import analyze
 
@@ -10,5 +10,5 @@ router = APIRouter(
 
 
 @router.get('/')
-def get_analytics(db:Session=Depends(get_db)):
-    return analyze.analyze_notes(db=db)
+async def get_analytics(db:AsyncSession=Depends(get_db)):
+    return await analyze.analyze_notes(db=db)

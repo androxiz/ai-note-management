@@ -1,14 +1,16 @@
 from fastapi import HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from collections import Counter
 import numpy as np
 import re
 
 from db.models import DbNote
+from sqlalchemy import select
 
-
-def analyze_notes(db: Session):
-    notes = db.query(DbNote).all()
+async def analyze_notes(db: AsyncSession):
+    stmt = select(DbNote)
+    result = await db.execute(stmt)
+    notes = result.scalars().all()
 
     if not notes:
         raise HTTPException(status_code=404, detail="No notes found")
