@@ -1,22 +1,35 @@
-from sqlalchemy.orm.session import Session
 from schemas import NoteBase
 from db.models import DbNote, DbNoteHistory, DbUser
 from fastapi import HTTPException
 
 from services.gemini import summaraze_note
 
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
-def check_note(db: Session, id: int, current_user: DbUser):
-    note = db.query(DbNote).filter(DbNote.id == id)
-    if not note.first():
+async def check_note(db: AsyncSession, id: int, current_user: DbUser):
+    stmt = (
+        select(DbNote)
+        .options(
+            selectinload(DbNote.owner),
+            selectinload(DbNote.history)
+        )
+        .where(DbNote.id == id)
+    )
+    
+    result = await db.execute(stmt)
+    note = result.scalar_one_or_none()
+
+    if not note:
         raise HTTPException(status_code=404, detail=f'Note {id} not found')
-    if note.first().owner != current_user:
+    if note.owner != current_user:
         raise HTTPException(status_code=403, detail=f'Forbidden')
 
     return note
 
 
-def create_note(db:Session, request:NoteBase, current_user:DbUser):
+async def create_note(db:AsyncSession, request:NoteBase, current_user:DbUser):
     new_note = DbNote(
         title = request.title,
         description=request.description,
@@ -24,25 +37,28 @@ def create_note(db:Session, request:NoteBase, current_user:DbUser):
     )
 
     db.add(new_note)
-    db.commit()
-    db.refresh(new_note)
+    await db.commit()
+    await db.refresh(new_note)
     return new_note
 
-def get_all(db:Session):
-    return db.query(DbNote).all()
+async def get_all(db:AsyncSession):
+    stmt = select(DbNote).order_by(DbNote.id)
+    result = await db.execute(stmt)
+    return result.scalars().all()
 
-def get_one(db:Session, id:int, current_user:DbUser):
-    note = check_note(db, id, current_user)
-    return note.first()
 
-def get_note_history(db:Session, id:int, current_user:DbUser):
-    note = check_note(db, id, current_user).first()
+async def get_one(db:AsyncSession, id:int, current_user:DbUser):
+    note = await check_note(db, id, current_user)
+    return note
+
+async def get_note_history(db:AsyncSession, id:int, current_user:DbUser):
+    note = await check_note(db, id, current_user)
     if not note.history:
         raise HTTPException(status_code=404, detail=f'History is empty')
     return note.history
 
-def get_note_summary(db:Session, id:int, current_user:DbUser):
-    note = check_note(db, id, current_user).first()
+async def get_note_summary(db:AsyncSession, id:int, current_user:DbUser):
+    note = await check_note(db, id, current_user)
 
     response = summaraze_note(note.description)
     return {
@@ -52,34 +68,34 @@ def get_note_summary(db:Session, id:int, current_user:DbUser):
     }
 
 
-def update_note(db:Session, id:int, request:NoteBase, current_user:DbUser):
-    note = check_note(db, id, current_user)
+async def update_note(db:AsyncSession, id:int, request:NoteBase, current_user:DbUser):
+    note = await check_note(db, id, current_user)
     
     note_history = DbNoteHistory(
-        note_id = note.first().id,
-        title = note.first().title,
-        description = note.first().description
+        note_id = note.id,
+        title = note.title,
+        description = note.description
     )
 
     db.add(note_history)
-    db.commit()
-    db.refresh(note_history)
+    await db.commit()
+    await db.refresh(note_history)
 
-    note.update({
-        DbNote.title: request.title,
-        DbNote.description: request.description
-    })
+    note.title = request.title
+    note.description = request.description
 
-    db.commit()
-    db.refresh(note.first())
-    return note.first()
+    await db.commit()
+    await db.refresh(note)
+
+    return note
 
 
-def delete_note(db:Session, id:int, current_user:DbUser):
-    note = check_note(db, id, current_user).first()
+async def delete_note(db:AsyncSession, id:int, current_user:DbUser):
+    note = await check_note(db, id, current_user)
     
-    db.delete(note)
-    db.commit()
+    await db.delete(note)
+    await db.commit()
+
     return {
         'message': f'Note {id} has been deleted'
     }
