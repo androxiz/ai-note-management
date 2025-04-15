@@ -6,9 +6,19 @@ from sqlalchemy.exc import IntegrityError
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 async def check_user(db: AsyncSession, id: int, current_user: DbUser):
-    user = await db.get(DbUser, id)
+    stmt = (
+        select(DbUser)
+        .options(
+            selectinload(DbUser.notes),
+        )
+        .where(DbUser.id == id)
+    )
+
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
 
     if not user:
         raise HTTPException(status_code=404, detail=f'User {id} not found')
