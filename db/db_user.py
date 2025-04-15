@@ -1,22 +1,24 @@
 from db.models import DbUser
 from schemas import UserBase
 from hash import Hash
-from sqlalchemy.orm.session import Session
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
-def check_user(db: Session, id: int, current_user: DbUser):
-    user = db.query(DbUser).filter(DbUser.id == id)
-    if not user.first():
+async def check_user(db: AsyncSession, id: int, current_user: DbUser):
+    user = await db.get(DbUser, id)
+
+    if not user:
         raise HTTPException(status_code=404, detail=f'User {id} not found')
-    if user.first() != current_user:
+    if user != current_user:
         raise HTTPException(status_code=403, detail=f'Forbidden')
 
     return user
 
 
-def create_user(db: Session, request: UserBase):
+async def create_user(db: AsyncSession, request: UserBase):
     new_user = DbUser(
         username = request.username,
         email = request.email,
@@ -24,56 +26,51 @@ def create_user(db: Session, request: UserBase):
     )
     db.add(new_user)
     try:
-        db.commit()
-        db.refresh(new_user)
+        await db.commit()
+        await db.refresh(new_user)
     except IntegrityError:
         raise HTTPException(status_code=400, detail='User with this credentials already exist')
 
     return new_user
 
-def get_all(db:Session):
-    return db.query(DbUser).all()
+async def get_all(db:AsyncSession):
+    stmt = select(DbUser).order_by(DbUser.id)
+    result = await db.execute(stmt)
+    notes = result.scalars().all()
+    return notes
 
 
-def get_one(db:Session, id:int, current_user:DbUser):
-    user = check_user(db, id, current_user).first()
+async def get_one(db:AsyncSession, id:int, current_user:DbUser):
+    user = await check_user(db, id, current_user)
     return user
 
 
-def get_user_notes(db:Session, id:int, current_user:DbUser):
-    user = check_user(db, id, current_user).first()
+async def get_user_notes(db:AsyncSession, id:int, current_user:DbUser):
+    user = await check_user(db, id, current_user)
     if not user.notes:
         raise HTTPException(status_code=404, detail='User doesnt have any notes')
     return user.notes
     
 
-def update_user(db:Session, id:int, request: UserBase, current_user:DbUser):
-    user = check_user(db, id, current_user)
-    try:
-        user.update({
-            DbUser.username: request.username,
-            DbUser.email: request.email,
-            DbUser.password: Hash.hash(request.password)
-        })
+async def update_user(db:AsyncSession, id:int, request: UserBase, current_user:DbUser):
+    user = await check_user(db, id, current_user)
 
-        db.commit()
-        db.refresh(user.first())
+    try:
+        user.username = request.username
+        user.email = request.email
+        user.password = Hash.hash(request.password)
+
+        await db.commit()
+        await db.refresh(user)
     except IntegrityError:
         raise HTTPException(status_code=400, detail='User with this credentials already exist')
     
-    return user.first()
+    return user
 
-def delete_user(db:Session, id:int, current_user:DbUser):
-    user = check_user(db, id, current_user).first()
-    db.delete(user)
-    db.commit()
+async def delete_user(db:AsyncSession, id:int, current_user:DbUser):
+    user = await check_user(db, id, current_user)
+    await db.delete(user)
+    await db.commit()
     return {
         'message': f'User {id} has been deleted successfully'
     }
-
-
-def get_user_by_name(db:Session, username:str):
-    user = db.query(DbUser).filter(DbUser.username==username).first()
-    if not user:
-         raise HTTPException(status_code=404, detail=f'User {username} not found')
-    return user
