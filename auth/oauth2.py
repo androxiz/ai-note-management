@@ -6,13 +6,15 @@ from jose.exceptions import JWTError
 
 from fastapi import Depends, HTTPException
 from db.database import get_db
-from sqlalchemy.orm.session import Session
+# from sqlalchemy.orm.session import Session
  
-from db import db_user
 from db.models import DbUser
 
 import os
 from dotenv import load_dotenv
+
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -38,7 +40,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
   return encoded_jwt
 
 
-def get_current_user(token: str = Depends(oauth2_scheme), db:Session = Depends(get_db)):
+async def get_current_user(token: str = Depends(oauth2_scheme), db:AsyncSession = Depends(get_db)):
     credential_exception = HTTPException(
        status_code=401,
        detail="Could not validate credentials",
@@ -53,7 +55,8 @@ def get_current_user(token: str = Depends(oauth2_scheme), db:Session = Depends(g
        print(f"JWT Error: {e}")
        raise credential_exception
     
-    user = db.query(DbUser).filter(DbUser.id == user_id).first()
+    result = await db.execute(select(DbUser).where(DbUser.id == user_id))
+    user = result.scalar_one_or_none()
 
     if user is None:
        raise credential_exception
